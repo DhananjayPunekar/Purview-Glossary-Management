@@ -51,6 +51,60 @@ class PurviewGlossaryManager:
             domains[item["name"]] = item['id']
         return domains
 
+    def get_term(self, term_id=None, term_name=None):
+        """
+        Fetches a glossary term from Microsoft Purview based on either term ID or term name.
+
+        Args:
+            term_id (str, optional): The unique identifier (GUID) of the glossary term.
+            term_name (str, optional): The name of the glossary term.
+
+        Returns:
+            dict or list: If fetching by term_id, returns a dictionary with the term's details. 
+                        If fetching by term_name, returns a list of terms that match the name.
+
+        Raises:
+            Exception: 
+                - If both term_id and term_name are provided (only one should be used at a time).
+                - If neither term_id nor term_name is provided.
+                - If there is a permission issue (403 error) when fetching by term_id.
+                - If no glossary term is found with the provided term_name.
+
+        Notes:
+            - If term_id is provided, it directly queries the API using the term's unique ID.
+            - If term_name is provided, it searches the list of all glossary terms and returns matches.
+            - Requires appropriate permissions to fetch terms (ensure the user has Data Steward Role).
+        """
+        # Check if both term_id and term_name are provided
+        if term_id and term_name:
+            raise Exception("Provide either 'term_id' or 'term_name', not both.")
+
+        # Fetch by term_id
+        if term_id:
+            url = f"{self.base_url}/terms/{term_id}"
+            logging.info(f"Fetching glossary term with ID: {term_id}...")
+            response = requests.get(url, headers=self.headers)
+            if response.status_code == 403:
+                logging.error("Permission error while fetching glossary term. Check Data Steward Role.")
+                raise Exception("Permission error. Check Data Steward Role.")
+            logging.info(f"Successfully fetched glossary term [{term_id}].")
+            return response.json()
+
+        # Fetch by term_name
+        elif term_name:
+            logging.info(f"Fetching glossary term with name: {term_name}...")
+            all_terms = self.get_all_glossary_terms()["value"]
+            response = [term for term in all_terms if term["name"] == term_name]
+            if response:
+                logging.info(f"Successfully fetched glossary term [{term_name}].")
+                return response
+            else:
+                raise Exception(f"The term [{term_name}] could not be found.")
+        
+        # Neither term_id nor term_name provided
+        else:
+            raise Exception("Either 'term_id' or 'term_name' must be provided.")
+
     def __check_term_exists(self, name, domain, all_terms, all_domains):
         """
         Checks whether a glossary term with the specified name already exists in the specified domain.
