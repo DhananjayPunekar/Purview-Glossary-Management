@@ -222,8 +222,9 @@ class PurviewGlossaryManager:
         Raises:
         Exception: If the service principal does not have the required permissions (403 status code).
         """
+        all_terms = self.get_all_glossary_terms()["value"]
         all_domains = self.get_all_domains()
-        if self.__check_term_exists(name, domain, all_domains):
+        if self.__check_term_exists(name, domain, all_terms, all_domains):
             logging.info(f"The term [{name}] already exists in the governance domain [{domain}]. Hence skipping creating this term!")
             return None
         else:
